@@ -1,30 +1,51 @@
-<script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite + Vue" />
+  <div class="container" ref="$container"></div>
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
+import {
+  Process,
+  Pot,
+  RectElement,
+  ELEMENT_MOUSE_ENTER,
+  ELEMENT_MOUSE_LEAVE,
+} from "./core";
+
+const $container = ref();
+const pot = new Pot();
+let process: Process | null = null;
+onMounted(() => {
+  process = new Process($container.value, pot);
+  process.setShowFps(true);
+  const r = new RectElement();
+  r.on(ELEMENT_MOUSE_ENTER, () => {
+    console.log("mouse enter");
+  });
+  r.on(ELEMENT_MOUSE_LEAVE, () => {
+    console.log("mouse leave");
+  });
+  let x = 100;
+  r.setX(x++);
+  r.setY(500);
+  r.setWidth(100);
+  r.setHeight(100);
+  pot.add(r);
+
+  const r2 = new RectElement();
+  r2.setStyle("fillColor", "blue");
+  r2.setWidth(200);
+  r2.setHeight(100);
+  pot.add(r2);
+});
+</script>
+
+<style>
+body {
+  margin: 0;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+.container {
+  width: 100vw;
+  height: 100vh;
 }
 </style>

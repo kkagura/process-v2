@@ -1,22 +1,27 @@
-interface CallbackFn {
-  (...args: any[]): void;
-  realCallback?: Function;
+interface Callback<Args extends unknown[]> {
+  (...args: Args): void;
 }
 
-export default class EventEmitter {
-  private events: Record<string, (CallbackFn | Function)[]> =
-    Object.create(null);
+interface CallbackWrapper<Args extends unknown[]> extends Callback<Args> {
+  realCallback: Callback<Args>;
+}
 
-  public on(type: string, callback: Function) {
-    if (this.events[type]) {
-      this.events[type].push(callback);
+export interface EventKey<Args extends unknown[]> extends Symbol {}
+
+export default class EventEmitter {
+  private events: Map<EventKey<unknown[]>, Function[]> = new Map();
+
+  public on<T extends unknown[]>(type: EventKey<T>, callback: Callback<T>) {
+    const cbs = this.events.get(type);
+    if (cbs) {
+      cbs.push(callback);
     } else {
-      this.events[type] = [callback];
+      this.events.set(type, [callback]);
     }
   }
 
-  public once(type: string, callback: Function) {
-    const wrap = (...args: any[]) => {
+  public once<T extends unknown[]>(type: EventKey<T>, callback: Callback<T>) {
+    const wrap: CallbackWrapper<T> = (...args: T) => {
       callback(...args);
       this.off(type, wrap);
     };
@@ -24,23 +29,28 @@ export default class EventEmitter {
     this.on(type, wrap);
   }
 
-  off(type: string, callback: Function) {
-    if (this.events[type]) {
-      this.events[type] = this.events[type].filter((fn) => {
-        return fn !== callback && (fn as CallbackFn).realCallback !== fn;
+  off<T extends unknown[]>(type: EventKey<T>, callback: Callback<T>) {
+    const cbs = this.events.get(type);
+    if (cbs) {
+      const rest = cbs.filter((fn) => {
+        return (
+          fn !== callback && (fn as CallbackWrapper<T>).realCallback !== fn
+        );
       });
+      this.events.set(type, rest);
     }
   }
 
-  clear(type?: string) {
+  clear<T extends unknown[]>(type?: EventKey<T>) {
     if (type) {
-      this.events[type] = [];
+      this.events.delete(type);
     } else {
-      this.events = Object.create(null);
+      this.events.clear();
     }
   }
 
-  emit(type: string, ...args: any[]) {
-    this.events[type]?.forEach((fn) => fn(...args));
+  emit<T extends unknown[]>(type: EventKey<T>, ...args: T) {
+    const cbs = this.events.get(type);
+    cbs?.forEach((fn) => fn(...args));
   }
 }
