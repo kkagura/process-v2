@@ -25,12 +25,12 @@ export default abstract class Element<
   id: string = randomString();
   visible: boolean = true;
   parent: Element | null = null;
-  attachments: Attachment[] = [];
   uiRect: Rect | null = null;
   rect: Rect | null = null;
   abstract style: Style;
   selected: boolean = false;
   hover: boolean = false;
+  label: string = "";
 
   constructor(public layerId: string = DEFAULT_LAYER_ID) {
     super();
@@ -45,8 +45,8 @@ export default abstract class Element<
 
   getPosition(): Position {
     return {
-      x: this.x,
-      y: this.y,
+      x: this.getX(),
+      y: this.getY(),
     };
   }
 
@@ -54,6 +54,14 @@ export default abstract class Element<
     const { x, y } = pos;
     this.setX(x);
     this.setY(y);
+  }
+
+  setCenterPosition(pos: Position) {
+    let { x, y } = pos;
+    const { width, height } = this.getSize();
+    x -= width / 2;
+    y -= height / 2;
+    this.setPosition({ x, y });
   }
 
   setId(id: string) {
@@ -64,24 +72,43 @@ export default abstract class Element<
     if (this.width === w) return;
     this.width = w;
     this.rect = null;
+    this.uiRect = null;
     const oldVal = this.width;
     this.triggerChange("width", "base", oldVal, w);
+  }
+
+  getWidth() {
+    return this.width;
   }
 
   setHeight(h: number) {
     if (this.height === h) return;
     this.height = h;
     this.rect = null;
+    this.uiRect = null;
     const oldVal = this.height;
     this.triggerChange("height", "base", oldVal, h);
+  }
+
+  getHeight() {
+    return this.height;
+  }
+
+  getX() {
+    return this.x;
   }
 
   setX(x: number) {
     if (this.x === x) return;
     const oldVal = this.x;
     this.rect = null;
+    this.uiRect = null;
     this.x = x;
     this.triggerChange("x", "base", oldVal, x);
+  }
+
+  getY() {
+    return this.y;
   }
 
   setY(y: number) {
@@ -96,10 +123,10 @@ export default abstract class Element<
     return (
       this.rect ||
       (this.rect = {
-        x: this.x,
-        y: this.y,
-        width: this.width,
-        height: this.height,
+        x: this.getX(),
+        y: this.getY(),
+        width: this.getWidth(),
+        height: this.getHeight(),
       })
     );
   }
@@ -138,6 +165,8 @@ export default abstract class Element<
     return false;
   }
 
+  hitOnAttachment(position: Position) {}
+
   hitOnPixel(position: Position) {
     return pixelTest(this.render.bind(this), position, this.getRect());
   }
@@ -175,5 +204,18 @@ export default abstract class Element<
     return this.hover;
   }
 
+  setLabel(label: string) {
+    if (label === this.label) return;
+    const old = this.label;
+    this.label = label;
+    this.triggerChange("label", "base", old, label);
+  }
+
+  getLabel() {
+    return this.label;
+  }
+
   abstract render(ctx: CanvasRenderingContext2D): void;
+
+  static JsonData() {}
 }

@@ -15,7 +15,7 @@ export default class Box extends EventEmitter {
   }
 
   remove(el: Element) {
-    if (this.elementMap.has(el.id)) {
+    if (!this.elementMap.has(el.id)) {
       throw new Error(`ID[${el.id}]不存在`);
     }
     this.elementMap.delete(el.id);

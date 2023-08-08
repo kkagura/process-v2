@@ -6,18 +6,18 @@ import { Rect } from "../types/attr";
 import { Border, FontStyle } from "../types/style";
 import { expandRect } from "../utils/math";
 
-export interface RectElementStyle {
+export interface CricleElementStyle {
   border?: Border;
   fill: boolean;
   fillColor: string;
   fontStyle?: FontStyle;
 }
 
-export default class RectElement extends Element<RectElementStyle> {
-  width: number = 80;
-  height: number = 50;
+export default class CircleElement extends Element<CricleElementStyle> {
+  width: number = 70;
+  height: number = 70;
   ports: PortAttachment[] = [];
-  style: RectElementStyle = {
+  style: CricleElementStyle = {
     border: {
       color: "#348ffc",
       width: 1,
@@ -56,7 +56,7 @@ export default class RectElement extends Element<RectElementStyle> {
     ctx.beginPath();
     if (this.getSelected()) {
       //  加一个蒙层效果
-      paintRoundRect(expandRect(rect, 3), ctx, 4);
+      // paintRoundRect(expandRect(rect, 3), ctx, 4);
 
       if (this.getStyle("fill") === true) {
         const fillColor = this.getStyle("fillColor");
@@ -65,7 +65,14 @@ export default class RectElement extends Element<RectElementStyle> {
       }
     }
     ctx.beginPath();
-    paintRoundRect(rect, ctx, 4);
+    const width = this.getWidth();
+    ctx.arc(
+      rect.x + rect.width / 2,
+      rect.y + rect.height / 2,
+      width / 2,
+      0,
+      2 * Math.PI
+    );
     if (this.getStyle("fill") === true) {
       const fillColor = this.getStyle("fillColor");
       ctx.fillStyle = fillColor;

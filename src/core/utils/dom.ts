@@ -11,3 +11,12 @@ export const setCanvasSize = (
     height: `${height}px`,
   });
 };
+
+export const isChildNode = (parent: HTMLElement, child: HTMLElement) => {
+  let temp: HTMLElement | null = child;
+  while (temp) {
+    if (temp.parentElement === parent) return true;
+    temp = temp.parentElement;
+  }
+  return false;
+};

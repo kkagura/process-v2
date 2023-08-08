@@ -51,7 +51,7 @@ export const expandRect = (rect: Rect, size: number): Rect => {
   return {
     x: x - size,
     y: y - size,
-    width: width + size,
-    height: height + size,
+    width: width + size * 2,
+    height: height + size * 2,
   };
 };

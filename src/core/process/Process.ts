@@ -1,3 +1,4 @@
+import { RectElement, CircleElement } from "../model";
 import Element, { ELEMENT_PROP_CHANGE } from "../base/Element";
 import EventEmitter from "../base/EventEmitter";
 import Plugin from "../base/Plugin";
@@ -27,26 +28,34 @@ export default class Process extends EventEmitter {
   private showFps: boolean = false;
   private startTime: number = performance.now();
   private fpsDiv!: HTMLDivElement;
+  public el!: HTMLElement;
+  public defaultPlugin = new DefaultPlugin(this);
+  private mounted: boolean = false;
 
   static DEBUG_COLOR = "#f56c6c";
   static DEBUG_LINE_WIDTH = 1;
+
+  static modelClassMap: Map<string, new (...args: any[]) => Element> =
+    new Map();
 
   handleElementPropChange = (el: Element) => {
     this.dirtyQueue.add(el);
   };
 
   repaint = () => {
-    if (this.isPaintAll) {
-      this.paintAll();
-      this.isPaintAll = false;
-    } else {
-      this.paint();
+    if (this.mounted) {
+      if (this.isPaintAll) {
+        this.paintAll();
+        this.isPaintAll = false;
+      } else {
+        this.paint();
+      }
+      const endTime = performance.now();
+      const deltaTime = endTime - this.startTime;
+      const fps = Math.round(1000 / deltaTime);
+      this.startTime = endTime;
+      this.setFps(fps);
     }
-    const endTime = performance.now();
-    const deltaTime = endTime - this.startTime;
-    const fps = Math.round(1000 / deltaTime);
-    this.startTime = endTime;
-    this.setFps(fps);
     requestAnimationFrame(this.repaint);
   };
 
@@ -81,14 +90,19 @@ export default class Process extends EventEmitter {
     });
   };
 
-  constructor(public el: HTMLElement, public pot: Pot) {
+  constructor(public pot: Pot) {
     super();
     this.initPlugins();
-    this.initDom();
     this.initLayer();
     this.initPot();
-    this.initEvent();
     requestAnimationFrame(this.repaint);
+  }
+
+  mount(el: HTMLElement) {
+    this.el = el;
+    this.initDom();
+    this.initEvent();
+    this.mounted = true;
   }
 
   initEvent() {
@@ -100,7 +114,7 @@ export default class Process extends EventEmitter {
   }
 
   initPlugins() {
-    this.plugins = [new DefaultPlugin(this)];
+    this.plugins = [this.defaultPlugin];
   }
 
   initPot() {
@@ -207,11 +221,11 @@ export default class Process extends EventEmitter {
     ctx.setTransform();
     const dpr = window.devicePixelRatio;
     ctx.scale(dpr, dpr);
-    ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
     ctx.save();
     const { x, y } = rect;
     ctx.translate(-x, -y);
     ctx.scale(this.zoom, this.zoom);
+    ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
 
     this.layers.forEach((layer) => {
       layer.forEach((el) => {
@@ -262,16 +276,16 @@ export default class Process extends EventEmitter {
     ctx.setTransform();
     const dpr = window.devicePixelRatio;
     ctx.scale(dpr, dpr);
-    ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
-    // ctx.rect(rect.x, rect.y, rect.width, rect.height);
-    // ctx.strokeStyle = "green";
-    // ctx.stroke();
     ctx.save();
     const { x, y } = this.getViewRect();
     ctx.translate(-x, -y);
     ctx.scale(this.zoom, this.zoom);
+    ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
+    // ctx.rect(rect.x, rect.y, rect.width, rect.height);
+    // ctx.strokeStyle = "green";
+    // ctx.stroke();
     this.sortByLayer(queue).forEach((el) => {
-      if (this.pot.has(el)) {
+      if (this.pot.has(el) && el.getVisible()) {
         const rect = el.getUIRect();
         if (this.debug) {
           paintRoundRect(rect, ctx, 0);
@@ -357,6 +371,7 @@ export default class Process extends EventEmitter {
   }
 
   setCursor(cursor: string = "default") {
+    if (this.el.style.cursor == cursor) return;
     this.el.style.cursor = cursor;
   }
 
@@ -386,4 +401,27 @@ export default class Process extends EventEmitter {
   }
 
   destory() {}
+
+  static registerModel(
+    modelName: string,
+    modelClass: new (...args: any[]) => Element
+  ) {
+    Process.modelClassMap.set(modelName, modelClass);
+  }
+
+  static getModelConstructor(modelName: string) {
+    const constructor = Process.modelClassMap.get(modelName);
+    return constructor;
+  }
+
+  static modelFactory(modelName: string, ...args: any[]) {
+    const constructor = Process.modelClassMap.get(modelName);
+    if (!constructor) {
+      throw new Error(`模型[${modelName}]不存在`);
+    }
+    return new constructor(...args);
+  }
 }
+
+Process.registerModel("Rect", RectElement);
+Process.registerModel("Circle", CircleElement);

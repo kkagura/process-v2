@@ -22,7 +22,9 @@ export default class DefaultPlugin extends Plugin {
       if (e.metaKey || e.ctrlKey) {
         this.addSelection(topEl);
       } else {
-        this.setSelection([topEl]);
+        if (!topEl.getSelected()) {
+          this.setSelection([topEl]);
+        }
       }
     } else {
       this.setSelection([]);
