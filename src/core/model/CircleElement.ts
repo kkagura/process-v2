@@ -19,12 +19,12 @@ export default class CircleElement extends Element<CricleElementStyle> {
   ports: PortAttachment[] = [];
   style: CricleElementStyle = {
     border: {
-      color: "#348ffc",
+      color: "#FFC069",
       width: 1,
       type: "solid",
     },
     fill: true,
-    fillColor: "rgba(148,195,252,0.2)",
+    fillColor: "rgba(255,242,232,0.9)",
     fontStyle: {
       color: "#000",
       fontSize: 14,
@@ -45,18 +45,29 @@ export default class CircleElement extends Element<CricleElementStyle> {
       return this.uiRect;
     }
     const border = this.getStyle<Border>("border");
-    const rect = this.getRect();
-    if (!border) {
-      return (this.uiRect = { ...rect });
+    let rect = this.getRect();
+    if (border) {
+      // 加上border的宽度
+      rect = expandRect(rect, border.width);
     }
-    return (this.uiRect = expandRect(rect, border.width + 4));
+    // 阴影、端口的大小
+    rect = expandRect(rect, 3);
+    return (this.uiRect = rect);
   }
   render(ctx: CanvasRenderingContext2D) {
     const rect = this.getRect();
+    const width = this.getWidth();
     ctx.beginPath();
     if (this.getSelected()) {
       //  加一个蒙层效果
       // paintRoundRect(expandRect(rect, 3), ctx, 4);
+      ctx.arc(
+        rect.x + rect.width / 2,
+        rect.y + rect.height / 2,
+        width / 2 + 3,
+        0,
+        2 * Math.PI
+      );
 
       if (this.getStyle("fill") === true) {
         const fillColor = this.getStyle("fillColor");
@@ -65,7 +76,6 @@ export default class CircleElement extends Element<CricleElementStyle> {
       }
     }
     ctx.beginPath();
-    const width = this.getWidth();
     ctx.arc(
       rect.x + rect.width / 2,
       rect.y + rect.height / 2,

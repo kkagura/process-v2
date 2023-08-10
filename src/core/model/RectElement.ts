@@ -45,11 +45,13 @@ export default class RectElement extends Element<RectElementStyle> {
       return this.uiRect;
     }
     const border = this.getStyle<Border>("border");
-    const rect = this.getRect();
-    if (!border) {
-      return (this.uiRect = { ...rect });
+    let rect = this.getRect();
+    if (border) {
+      // 加上border的宽度
+      rect = expandRect(rect, border.width);
     }
-    return (this.uiRect = expandRect(rect, border.width + 4));
+    rect = expandRect(rect, 3);
+    return (this.uiRect = rect);
   }
   render(ctx: CanvasRenderingContext2D) {
     const rect = this.getRect();
