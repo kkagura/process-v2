@@ -1,4 +1,4 @@
-import { Rect } from "../types/attr";
+import { Direction, Point, Rect } from "../types/attr";
 
 export const mergeRects = (rect1: Rect, ...rects: Rect[]) => {
   const result: Rect = { ...rect1 };
@@ -53,5 +53,45 @@ export const expandRect = (rect: Rect, size: number): Rect => {
     y: y - size,
     width: width + size * 2,
     height: height + size * 2,
+  };
+};
+
+export const getDistance = (p1: Point, p2: Point) => {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+};
+
+export const isSamePoint = (p1: Point, p2: Point, dis: number = 0) => {
+  if (p1 === p2 || (p1.x === p2.x && p1.y === p2.y)) return true;
+  if (dis === 0) return false;
+  return getDistance(p1, p2) <= dis;
+};
+
+export const createControlPoints = (
+  start: Point,
+  startDir: Direction,
+  end: Point,
+  endDir: Direction
+): Point[] => {
+  return [start, end];
+};
+
+export const getRectByPoints = (points: Point[]): Rect => {
+  const first = points[0];
+  let minx = first?.x ?? 0,
+    miny = first?.y ?? 0,
+    maxx = first?.x ?? 0,
+    maxy = first?.y ?? 0;
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = points[i];
+    if (x < minx) minx = x;
+    if (x > maxx) maxx = x;
+    if (y < miny) miny = y;
+    if (y > maxy) maxy = y;
+  }
+  return {
+    x: minx,
+    y: miny,
+    width: maxx - minx,
+    height: maxy - miny,
   };
 };

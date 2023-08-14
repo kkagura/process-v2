@@ -1,24 +1,37 @@
+import { LinkElement } from "..";
+import PortAttachment from "../Attachment/PortAttachment";
 import Element, {
   ELEMENT_MOUSE_ENTER,
   ELEMENT_MOUSE_LEAVE,
 } from "../base/Element";
 import Plugin from "../base/Plugin";
+import ShapeElement from "../base/ShapeElement";
 
 export default class DefaultPlugin extends Plugin {
   mousedown: boolean = false;
   selectionList: Set<Element> = new Set();
-  clickTarget: Element | null = null;
-  hoverTarget: Element | null = null;
+  clickTargetEl: Element | null = null;
+  clickTargetPort: PortAttachment | null = null;
+  hoverTargetEl: Element | null = null;
   pageX: number = 0;
   pageY: number = 0;
+  linkEl: LinkElement | null = null;
 
   handleMousedown(targets: Element[], e: MouseEvent): void {
-    this.process.setCursor("move");
+    this.mousedown = true;
     this.pageX = e.pageX;
     this.pageY = e.pageY;
     const topEl = targets[targets.length - 1];
-    this.clickTarget = topEl || null;
+    this.clickTargetEl = topEl || null;
     if (topEl) {
+      if (topEl instanceof ShapeElement) {
+        const ports = topEl.ports;
+        const point = this.process.getPixelPoint(e);
+        const port = ports.find((p) => p.hit(point)) || null;
+        this.clickTargetPort = port;
+      } else {
+        this.clickTargetPort = null;
+      }
       if (e.metaKey || e.ctrlKey) {
         this.addSelection(topEl);
       } else {
@@ -29,11 +42,31 @@ export default class DefaultPlugin extends Plugin {
     } else {
       this.setSelection([]);
     }
-    this.mousedown = true;
   }
 
   handleMousemove(e: MouseEvent): void {
     if (this.mousedown) {
+      if (this.clickTargetPort) {
+        if (!this.linkEl) {
+          this.createLink();
+          const point = this.process.getPixelPoint(e);
+          this.linkEl!.setEndPoint(point);
+          this.process.pot.add(this.linkEl!);
+        }
+        const linkEl = this.linkEl!;
+        // const els = this.process.getElementsAt(e);
+        // const el = els.find((e) => e !== linkEl);
+        // if (el) {
+        // } else {
+        //   const point = this.process.getPixelPoint(e);
+        //   linkEl.setEndPoint(point);
+        // }
+        const point = this.process.getPixelPoint(e);
+        linkEl.setEndPoint(point);
+
+        return;
+      }
+      this.process.setCursor("move");
       if (this.selectionList.size === 0) {
         this.moveCanvas(e);
       } else {
@@ -41,19 +74,27 @@ export default class DefaultPlugin extends Plugin {
       }
     } else {
       const el = this.process.getElementAt(e);
-      const { clickTarget } = this;
-      if (clickTarget != el) {
-        if (clickTarget) {
-          clickTarget.setHover(false);
-          clickTarget.emit(ELEMENT_MOUSE_LEAVE, clickTarget);
+      const { hoverTargetEl } = this;
+      if (hoverTargetEl != el) {
+        if (hoverTargetEl) {
+          hoverTargetEl.setHover(false);
+          hoverTargetEl.emit(ELEMENT_MOUSE_LEAVE, hoverTargetEl);
         }
-        this.clickTarget = el || null;
+        this.hoverTargetEl = el || null;
         if (el) {
           el.setHover(true);
           el.emit(ELEMENT_MOUSE_ENTER, el);
         }
       }
     }
+  }
+
+  createLink() {
+    const port = this.clickTargetPort!;
+    const host = port.getHost()!;
+    const layerId = host.getLayerId();
+    this.linkEl = new LinkElement(layerId);
+    this.linkEl.setStartPort(port);
   }
 
   getOffset(e: MouseEvent) {
@@ -82,6 +123,9 @@ export default class DefaultPlugin extends Plugin {
 
   handleMouseup(e: MouseEvent): void {
     this.process.setCursor();
+    this.linkEl = null;
+    this.clickTargetEl = null;
+    this.clickTargetPort = null;
     this.mousedown = false;
   }
 

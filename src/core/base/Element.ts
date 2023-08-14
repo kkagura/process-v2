@@ -56,6 +56,14 @@ export default abstract class Element<
     this.setY(y);
   }
 
+  getCenterPosition(): Position {
+    const { width, height, x, y } = this.getRect();
+    return {
+      x: x + width / 2,
+      y: y + height / 2,
+    };
+  }
+
   setCenterPosition(pos: Position) {
     let { x, y } = pos;
     const { width, height } = this.getSize();
@@ -138,8 +146,12 @@ export default abstract class Element<
     this.triggerChange(key, "style", old, val);
   }
 
-  getStyle<T = any>(key: keyof Style): T | null {
-    return this.style[key];
+  getStyle<T = any>(key: keyof Style): T | null;
+
+  getStyle<T = any>(key: keyof Style, defaultValue: T): T;
+
+  getStyle<T = any>(key: keyof Style, defaultValue?: T) {
+    return this.style[key] ?? defaultValue ?? null;
   }
 
   abstract getUIRect(): Rect;
@@ -153,19 +165,21 @@ export default abstract class Element<
   }
 
   hit(position: Position) {
-    const { x, y, width, height } = this.getRect();
+    const { x, y, width, height } = this.getUIRect();
     if (
       position.x >= x &&
       position.y >= y &&
       position.x <= x + width &&
       position.y <= y + height
     ) {
-      return this.hitOnPixel(position);
+      return this.hitOnPixel(position) || this.hitOnAttachment(position);
     }
     return false;
   }
 
-  hitOnAttachment(position: Position) {}
+  hitOnAttachment(position: Position) {
+    return false;
+  }
 
   hitOnPixel(position: Position) {
     return pixelTest(this.render.bind(this), position, this.getRect());

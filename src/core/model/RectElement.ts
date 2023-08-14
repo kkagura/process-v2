@@ -1,8 +1,9 @@
 import PortAttachment from "../Attachment/PortAttachment";
 import Element from "../base/Element";
+import ShapeElement from "../base/ShapeElement";
 import { DEFAULT_LAYER_ID } from "../process/Layer";
 import { fillText, paintRoundRect } from "../shape";
-import { Rect } from "../types/attr";
+import { Position, Rect } from "../types/attr";
 import { Border, FontStyle } from "../types/style";
 import { expandRect } from "../utils/math";
 
@@ -13,10 +14,9 @@ export interface RectElementStyle {
   fontStyle?: FontStyle;
 }
 
-export default class RectElement extends Element<RectElementStyle> {
+export default class RectElement extends ShapeElement<RectElementStyle> {
   width: number = 80;
   height: number = 50;
-  ports: PortAttachment[] = [];
   style: RectElementStyle = {
     border: {
       color: "#348ffc",
@@ -31,15 +31,6 @@ export default class RectElement extends Element<RectElementStyle> {
       align: "center",
     },
   };
-  constructor(public layerId: string = DEFAULT_LAYER_ID) {
-    super(layerId);
-    this.ports = [
-      new PortAttachment("top", this),
-      new PortAttachment("right", this),
-      new PortAttachment("bottom", this),
-      new PortAttachment("left", this),
-    ];
-  }
   getUIRect(): Rect {
     if (this.uiRect) {
       return this.uiRect;
@@ -89,6 +80,10 @@ export default class RectElement extends Element<RectElementStyle> {
         port.render(ctx);
       });
     }
+  }
+
+  hitOnAttachment(position: Position) {
+    return this.ports.some((p) => p.hit(position));
   }
 
   serialize() {}

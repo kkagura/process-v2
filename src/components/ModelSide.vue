@@ -67,7 +67,7 @@ const handleDragger = useDraggerEvent<(typeof models)[number]>({
       currentNode && pot.remove(currentNode);
     }
     if (currentNode) {
-      process.defaultPlugin.setSelection([currentNode]);
+      process.setSelection([currentNode]);
       currentNode = null;
     }
   },

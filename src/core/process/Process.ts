@@ -1,4 +1,4 @@
-import { RectElement, CircleElement } from "../model";
+import { RectElement, CircleElement, LinkElement } from "../model";
 import Element, { ELEMENT_PROP_CHANGE } from "../base/Element";
 import EventEmitter from "../base/EventEmitter";
 import Plugin from "../base/Plugin";
@@ -19,7 +19,6 @@ export default class Process extends EventEmitter {
 
   private offsetX = 0;
   private offsetY = 0;
-  private plugins: Plugin[] = [];
   private viewRect: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private rectMap: Map<string, Rect> = new Map();
   private zoom: number = 1;
@@ -29,7 +28,8 @@ export default class Process extends EventEmitter {
   private startTime: number = performance.now();
   private fpsDiv!: HTMLDivElement;
   public el!: HTMLElement;
-  public defaultPlugin = new DefaultPlugin(this);
+  private defaultPlugin = new DefaultPlugin(this);
+  private plugins: Plugin[] = [this.defaultPlugin];
   private mounted: boolean = false;
 
   static DEBUG_COLOR = "#f56c6c";
@@ -92,10 +92,8 @@ export default class Process extends EventEmitter {
 
   constructor(public pot: Pot) {
     super();
-    this.initPlugins();
     this.initLayer();
     this.initPot();
-    requestAnimationFrame(this.repaint);
   }
 
   mount(el: HTMLElement) {
@@ -103,6 +101,7 @@ export default class Process extends EventEmitter {
     this.initDom();
     this.initEvent();
     this.mounted = true;
+    requestAnimationFrame(this.repaint);
   }
 
   initEvent() {
@@ -111,10 +110,6 @@ export default class Process extends EventEmitter {
     this.topCanvas.addEventListener("mouseup", this.handleMouseup);
     this.topCanvas.addEventListener("mouseleave", this.handleMouseleave);
     this.topCanvas.addEventListener("scroll", this.handleScroll);
-  }
-
-  initPlugins() {
-    this.plugins = [this.defaultPlugin];
   }
 
   initPot() {
@@ -201,6 +196,10 @@ export default class Process extends EventEmitter {
     removeItem(this.layers, layer);
   }
 
+  addPlugins(plugins: Plugin[]) {
+    this.plugins.push(...plugins);
+  }
+
   getDefaultLayer() {
     return this.layerMap.get(DEFAULT_LAYER_ID)!;
   }
@@ -249,6 +248,8 @@ export default class Process extends EventEmitter {
     const { topCanvas, rectMap } = this;
     if (!this.dirtyQueue.size) return;
     const queue = [...this.dirtyQueue];
+    const elMap: Record<string, true> = Object.create(null);
+    queue.forEach((el) => (elMap[el.id] = true));
     const first = queue[0];
     let rect = queue.reduce((prev, curr) => {
       const newRect = curr.getUIRect();
@@ -259,17 +260,25 @@ export default class Process extends EventEmitter {
       return mergeRects(prev, newRect);
     }, first.getUIRect());
     const viewRect = this.getViewRect();
-    this.forEach((el) => {
-      if (this.dirtyQueue.has(el)) return;
-      const elRect = el.getUIRect();
-      // 超出画布范围的不渲染
-      if (!isIntersect(elRect, viewRect)) return;
+    let again = true;
+    // 每次改变了之后都要重新
+    while (again) {
+      again = false;
+      this.forEach((el) => {
+        if (elMap[el.id]) return;
+        const elRect = el.getUIRect();
+        // 超出画布范围的不渲染
+        if (!isIntersect(elRect, viewRect)) return;
 
-      if (isIntersect(elRect, rect)) {
-        queue.push(el);
-        rect = mergeRects(rect, elRect);
-      }
-    });
+        if (isIntersect(elRect, rect)) {
+          queue.push(el);
+          elMap[el.id] = true;
+          rect = mergeRects(rect, elRect);
+          again = true;
+          return true;
+        }
+      });
+    }
 
     rect = clipRect(rect, viewRect);
     const ctx = topCanvas.getContext("2d")!;
@@ -280,10 +289,10 @@ export default class Process extends EventEmitter {
     const { x, y } = this.getViewRect();
     ctx.translate(-x, -y);
     ctx.scale(this.zoom, this.zoom);
-    ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
+    // ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
     // ctx.rect(rect.x, rect.y, rect.width, rect.height);
     // ctx.strokeStyle = "green";
-    // ctx.stroke();
+    ctx.stroke();
     this.sortByLayer(queue).forEach((el) => {
       if (this.pot.has(el) && el.getVisible()) {
         const rect = el.getUIRect();
@@ -306,12 +315,25 @@ export default class Process extends EventEmitter {
   }
 
   sortByLayer(elements: Element[]) {
-    const { layers } = this;
-    const indexMap: Record<string, number> = {};
-    layers.forEach((l, i) => (indexMap[l.name] = i));
-    return [...elements].sort((a, b) => {
-      return indexMap[a.layerId] - indexMap[b.layerId];
+    // const { layers } = this;
+    // const indexMap: Record<string, number> = {};
+    // layers.forEach((l, i) => (indexMap[l.name] = i));
+    // return [...elements].sort((a, b) => {
+    //   return indexMap[a.layerId] - indexMap[b.layerId];
+    // });
+    const elementsMap: Record<string, Element> = {};
+    elements.forEach((el) => {
+      elementsMap[el.id] = el;
     });
+    const res: Element[] = [];
+    this.layers.forEach((layer) => {
+      layer.forEach((el) => {
+        if (elementsMap[el.id]) {
+          res.push(el);
+        }
+      });
+    });
+    return res;
   }
 
   forEach(cb: (el: Element) => void | boolean) {
@@ -400,7 +422,7 @@ export default class Process extends EventEmitter {
     }
   }
 
-  destory() {}
+  unmount() {}
 
   static registerModel(
     modelName: string,
@@ -421,7 +443,12 @@ export default class Process extends EventEmitter {
     }
     return new constructor(...args);
   }
+
+  setSelection(els: Element[]) {
+    this.defaultPlugin.setSelection(els);
+  }
 }
 
 Process.registerModel("Rect", RectElement);
 Process.registerModel("Circle", CircleElement);
+Process.registerModel("Link", LinkElement);

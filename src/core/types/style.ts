@@ -1,7 +1,9 @@
+export type LineStyle = "solid" | "dash" | "dotted";
+
 export interface Border {
   width: number;
   color: string;
-  type: "solid" | "dash" | "dotted";
+  type: LineStyle;
 }
 
 export interface FontStyle {

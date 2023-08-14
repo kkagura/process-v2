@@ -1,8 +1,6 @@
-import PortAttachment from "../Attachment/PortAttachment";
-import Element from "../base/Element";
-import { DEFAULT_LAYER_ID } from "../process/Layer";
+import ShapeElement from "../base/ShapeElement";
 import { fillText, paintRoundRect } from "../shape";
-import { Rect } from "../types/attr";
+import { Position, Rect } from "../types/attr";
 import { Border, FontStyle } from "../types/style";
 import { expandRect } from "../utils/math";
 
@@ -13,10 +11,9 @@ export interface CricleElementStyle {
   fontStyle?: FontStyle;
 }
 
-export default class CircleElement extends Element<CricleElementStyle> {
+export default class CircleElement extends ShapeElement<CricleElementStyle> {
   width: number = 70;
   height: number = 70;
-  ports: PortAttachment[] = [];
   style: CricleElementStyle = {
     border: {
       color: "#FFC069",
@@ -31,15 +28,7 @@ export default class CircleElement extends Element<CricleElementStyle> {
       align: "center",
     },
   };
-  constructor(public layerId: string = DEFAULT_LAYER_ID) {
-    super(layerId);
-    this.ports = [
-      new PortAttachment("top", this),
-      new PortAttachment("right", this),
-      new PortAttachment("bottom", this),
-      new PortAttachment("left", this),
-    ];
-  }
+
   getUIRect(): Rect {
     if (this.uiRect) {
       return this.uiRect;
@@ -104,6 +93,10 @@ export default class CircleElement extends Element<CricleElementStyle> {
         port.render(ctx);
       });
     }
+  }
+
+  hitOnAttachment(position: Position) {
+    return this.ports.some((p) => p.hit(position));
   }
 
   serialize() {}

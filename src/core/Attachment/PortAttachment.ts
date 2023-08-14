@@ -1,15 +1,12 @@
 import { expandRect } from "../utils";
 import { Attachment, Element } from "../base";
-import { Rect } from "../types/attr";
+import { Direction, Rect } from "../types/attr";
 
 export default class PortAttachment extends Attachment<{}> {
   style: Record<string, any> = {};
   width: number = 6;
   height: number = 6;
-  constructor(
-    public direction: "top" | "left" | "right" | "bottom",
-    public host: Element
-  ) {
+  constructor(public direction: Direction, public host: Element) {
     super();
   }
 
