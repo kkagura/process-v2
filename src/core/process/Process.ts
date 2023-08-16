@@ -289,14 +289,15 @@ export default class Process extends EventEmitter {
     const { x, y } = this.getViewRect();
     ctx.translate(-x, -y);
     ctx.scale(this.zoom, this.zoom);
-    // ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
     // ctx.rect(rect.x, rect.y, rect.width, rect.height);
     // ctx.strokeStyle = "green";
-    ctx.stroke();
+    // ctx.stroke();
     this.sortByLayer(queue).forEach((el) => {
       if (this.pot.has(el) && el.getVisible()) {
         const rect = el.getUIRect();
         if (this.debug) {
+          ctx.beginPath();
           paintRoundRect(rect, ctx, 0);
           ctx.lineWidth = Process.DEBUG_LINE_WIDTH;
           ctx.strokeStyle = Process.DEBUG_COLOR;
