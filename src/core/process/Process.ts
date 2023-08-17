@@ -9,8 +9,10 @@ import { removeItem, setCanvasSize } from "../utils";
 import { clipRect, isIntersect, mergeRects } from "../utils/math";
 import Layer, { DEFAULT_LAYER_ID } from "./Layer";
 import Pot, { POT_ADD_ELEMENT, POT_REMOVE_ELEMENT } from "./Pot";
+import Quadtree from "../base/Quadtree";
+import { Moveable } from "../types/model";
 
-export default class Process extends EventEmitter {
+export default class Process extends EventEmitter implements Moveable {
   topCanvas!: HTMLCanvasElement;
   bottomCanvas!: HTMLCanvasElement;
   layers: Layer[] = [];
@@ -31,6 +33,8 @@ export default class Process extends EventEmitter {
   private defaultPlugin = new DefaultPlugin(this);
   private plugins: Plugin[] = [this.defaultPlugin];
   private mounted: boolean = false;
+  private quadtree: Quadtree | null = null;
+  public movable = true;
 
   static DEBUG_COLOR = "#f56c6c";
   static DEBUG_LINE_WIDTH = 1;
@@ -123,12 +127,14 @@ export default class Process extends EventEmitter {
         layer.add(el);
       }
       this.dirtyQueue.add(el);
+      this.quadtree?.insert(el);
       el.on(ELEMENT_PROP_CHANGE, this.handleElementPropChange);
     });
     this.pot.on(POT_REMOVE_ELEMENT, (el) => {
       const layer = this.layerMap.get(el.layerId)!;
       layer.remove(el);
       this.dirtyQueue.add(el);
+      this.quadtree?.remove(el);
       el.off(ELEMENT_PROP_CHANGE, this.handleElementPropChange);
     });
   }
@@ -212,6 +218,8 @@ export default class Process extends EventEmitter {
     this.viewRect.height = height;
     setCanvasSize(this.topCanvas, width, height);
     setCanvasSize(this.bottomCanvas, width, height);
+    this.quadtree = null;
+    this.handleViewRectChange();
   }
 
   paintAll() {
@@ -316,12 +324,6 @@ export default class Process extends EventEmitter {
   }
 
   sortByLayer(elements: Element[]) {
-    // const { layers } = this;
-    // const indexMap: Record<string, number> = {};
-    // layers.forEach((l, i) => (indexMap[l.name] = i));
-    // return [...elements].sort((a, b) => {
-    //   return indexMap[a.layerId] - indexMap[b.layerId];
-    // });
     const elementsMap: Record<string, Element> = {};
     elements.forEach((el) => {
       elementsMap[el.id] = el;
@@ -360,7 +362,16 @@ export default class Process extends EventEmitter {
   getElementAt(e: MouseEvent): Element | null {
     let result: Element | null = null;
     const pos = this.getPixelPoint(e);
-    this.forEachByLayer((el) => {
+    const quadtree = this.getQuadtree();
+    const pRect = {
+      ...pos,
+      width: 0,
+      height: 0,
+    };
+    let els = quadtree.retrieve(pRect);
+    if (!els.length) return null;
+    els = this.sortByLayer(els).reverse();
+    els.some((el) => {
       if (el.hit(pos)) {
         result = el;
         return true;
@@ -372,7 +383,16 @@ export default class Process extends EventEmitter {
   getElementsAt(e: MouseEvent) {
     const elements: Element[] = [];
     const pos = this.getPixelPoint(e);
-    this.forEachByLayer((el) => {
+    const quadtree = this.getQuadtree();
+    const pRect = {
+      ...pos,
+      width: 0,
+      height: 0,
+    };
+    let els = quadtree.retrieve(pRect);
+    if (!els.length) return [];
+    els = this.sortByLayer(els).reverse();
+    els.forEach((el) => {
       if (el.hit(pos)) {
         elements.push(el);
       }
@@ -448,6 +468,17 @@ export default class Process extends EventEmitter {
   setSelection(els: Element[]) {
     this.defaultPlugin.setSelection(els);
   }
+
+  getQuadtree(): Quadtree {
+    if (this.quadtree) return this.quadtree;
+    const tree = new Quadtree(this.viewRect);
+    this.forEachByLayer((node) => tree.insert(node));
+    return (this.quadtree = tree);
+  }
+
+  handleMoveStart() {}
+  handleMoving(offsetx: number, offsety: number) {}
+  handleMoveEnd(offsetx: number, offsety: number) {}
 }
 
 Process.registerModel("Rect", RectElement);

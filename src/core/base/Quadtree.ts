@@ -139,19 +139,18 @@ export default class Quadtree {
     }
   }
 
-  remove(el: Element): boolean {
+  remove(el: Element) {
     if (this.nodes.length) {
       const indexs = this.getIndex(el.getUIRect());
       indexs.forEach((index) => {
         this.nodes[index].remove(el);
       });
+    } else {
+      const i = this.objects.indexOf(el);
+      if (i > -1) {
+        this.objects.splice(i, 1);
+      }
     }
-
-    const i = this.objects.indexOf(el);
-    if (i > -1) {
-      this.objects.splice(i, 1);
-    }
-    return i > -1;
   }
 
   retrieve(pRect: Rect) {

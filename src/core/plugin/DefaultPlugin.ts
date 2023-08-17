@@ -6,6 +6,7 @@ import Element, {
 } from "../base/Element";
 import Plugin from "../base/Plugin";
 import ShapeElement from "../base/ShapeElement";
+import { Moveable } from "../types/model";
 
 export default class DefaultPlugin extends Plugin {
   mousedown: boolean = false;
@@ -16,6 +17,8 @@ export default class DefaultPlugin extends Plugin {
   pageX: number = 0;
   pageY: number = 0;
   linkEl: LinkElement | null = null;
+  moveTargets: Set<Moveable> = new Set();
+  moveStartCalled: boolean = false;
 
   handleMousedown(targets: Element[], e: MouseEvent): void {
     this.mousedown = true;
@@ -68,10 +71,15 @@ export default class DefaultPlugin extends Plugin {
       }
       this.process.setCursor("move");
       if (this.selectionList.size === 0) {
-        this.moveCanvas(e);
+        this.moveTargets.add(this.process);
       } else {
-        this.moveSelection(e);
+        this.selectionList.forEach((el: any) => {
+          if (el.movable) {
+            this.moveTargets.add(el);
+          }
+        });
       }
+      this.move(e);
     } else {
       const el = this.process.getElementAt(e);
       const { hoverTargetEl } = this;
@@ -106,27 +114,34 @@ export default class DefaultPlugin extends Plugin {
     return { offsetX, offsetY };
   }
 
-  moveCanvas(e: MouseEvent) {
+  move(e: MouseEvent) {
     const { offsetX, offsetY } = this.getOffset(e);
-    this.process.move(offsetX, offsetY);
-  }
-
-  moveSelection(e: MouseEvent) {
-    const { offsetX, offsetY } = this.getOffset(e);
-    this.selectionList.forEach((el) => {
-      let { x, y } = el.getPosition();
-      x += offsetX;
-      y += offsetY;
-      el.setPosition({ x, y });
+    this.moveTargets.forEach((el) => {
+      el.move(offsetX, offsetY);
+      if (this.moveStartCalled) {
+        el.handleMoving(offsetX, offsetY);
+      } else {
+        el.handleMoveStart();
+      }
     });
   }
 
   handleMouseup(e: MouseEvent): void {
+    const { pageX, pageY } = e;
+    const offsetx = pageX - this.pageX;
+    const offsety = pageY - this.pageY;
+    if (offsetx !== 0 || offsety !== 0) {
+      if (this.moveTargets.size != 0) {
+        this.moveTargets.forEach((el) => el.handleMoveEnd(offsetx, offsety));
+      }
+    }
     this.process.setCursor();
     this.linkEl = null;
     this.clickTargetEl = null;
     this.clickTargetPort = null;
     this.mousedown = false;
+    this.moveTargets.clear();
+    this.moveStartCalled = false;
   }
 
   handleMouseleave(e: MouseEvent) {
