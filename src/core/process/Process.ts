@@ -391,7 +391,7 @@ export default class Process extends EventEmitter implements Moveable {
     };
     let els = quadtree.retrieve(pRect);
     if (!els.length) return [];
-    els = this.sortByLayer(els).reverse();
+    els = this.sortByLayer(els);
     els.forEach((el) => {
       if (el.hit(pos)) {
         elements.push(el);
