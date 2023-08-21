@@ -479,6 +479,10 @@ export default class Process extends EventEmitter implements Moveable {
   handleMoveStart() {}
   handleMoving(offsetx: number, offsety: number) {}
   handleMoveEnd(offsetx: number, offsety: number) {}
+
+  handleElementsMoveStart(els: Set<Moveable>) {}
+  handleElementsMoving(els: Set<Moveable>) {}
+  handleElementsMoveEnd(els: Set<Moveable>) {}
 }
 
 Process.registerModel("Rect", RectElement);
